@@ -1,0 +1,32 @@
+import { Router } from "express";
+import { resumesRouter } from "./resumes.routes";
+import { templatesRouter } from "./templates.routes";
+import { uploadsRouter } from "./uploads.routes";
+import { scanRouter } from "./scan.routes";
+import { jobDescriptionsRouter } from "./job-descriptions.routes";
+import { coverLettersRouter } from "./cover-letters.routes";
+import { interviewRouter } from "./interview.routes";
+import { linkedinRouter } from "./linkedin.routes";
+import { rewriteRouter } from "./rewrite.routes";
+import { exportRouter } from "./export.routes";
+import { dashboardRouter } from "./dashboard.routes";
+import { applicationsRouter } from "./applications.routes";
+import { accountRouter } from "./account.routes";
+import { adminRouter } from "./admin";
+
+export const apiRouter = Router();
+
+apiRouter.use("/resumes", resumesRouter);
+apiRouter.use("/templates", templatesRouter);
+apiRouter.use("/uploads", uploadsRouter);
+apiRouter.use("/scan", scanRouter);
+apiRouter.use("/job-descriptions", jobDescriptionsRouter);
+apiRouter.use("/cover-letters", coverLettersRouter);
+apiRouter.use("/interview-prep", interviewRouter);
+apiRouter.use("/linkedin", linkedinRouter);
+apiRouter.use("/rewrite", rewriteRouter);
+apiRouter.use("/export", exportRouter);
+apiRouter.use("/dashboard", dashboardRouter);
+apiRouter.use("/applications", applicationsRouter);
+apiRouter.use("/account", accountRouter);
+apiRouter.use("/admin", adminRouter);
