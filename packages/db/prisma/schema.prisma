@@ -1,0 +1,454 @@
+// ResumeAI Pro - Core data model
+// Design notes:
+// - Resume content (experience, education, skills, etc.) is stored as a single
+//   validated JSON document per ResumeVersion rather than 15+ join tables.
+//   Section order/shape is highly variable (custom sections, per-industry
+//   ordering) and the document is always read/written as a whole by the
+//   builder UI and the AI layer, so a versioned JSON document + zod schema
+//   (see packages/shared/src/schemas/resume.ts) is the pragmatic production
+//   choice here, not relational normalization for its own sake.
+// - Everything that IS queried/filtered independently (analyses, cover
+//   letters, templates, subscriptions, AI usage) is a first-class relational
+//   model.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  url      = env("DATABASE_URL")
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Identity & billing
+// ---------------------------------------------------------------------------
+
+enum SubscriptionPlan {
+  FREE
+  PREMIUM
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIALING
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+model User {
+  id            String   @id @default(cuid())
+  clerkId       String   @unique
+  email         String   @unique
+  firstName     String?
+  lastName      String?
+  avatarUrl     String?
+  role          Role     @default(USER)
+  country       String?
+  timezone      String?
+  marketingOptIn Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime? // soft delete for GDPR export/delete flow
+
+  subscription      Subscription?
+  resumes            Resume[]
+  uploadedResumes     UploadedResume[]
+  jobDescriptions     JobDescription[]
+  atsAnalyses         AtsAnalysis[]
+  coverLetters        CoverLetter[]
+  linkedinOptimizations LinkedInOptimization[]
+  interviewSessions   InterviewSession[]
+  aiUsageLogs         AiUsageLog[]
+  auditLogs           AuditLog[]
+  applications        Application[]
+  privacySettings     PrivacySetting?
+
+  @@index([email])
+}
+
+model PrivacySetting {
+  id                  String  @id @default(cuid())
+  userId              String  @unique
+  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  allowAiTraining     Boolean @default(false)
+  allowAnalytics      Boolean @default(true)
+  dataRetentionDays   Int     @default(730)
+  updatedAt           DateTime @updatedAt
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                 SubscriptionPlan   @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  scansUsedThisPeriod  Int                @default(0)
+  scanLimit            Int                @default(5) // -1 = unlimited
+  periodStart          DateTime           @default(now())
+  periodEnd            DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+model PlanConfig {
+  id          String           @id @default(cuid())
+  plan        SubscriptionPlan @unique
+  priceMonthlyCents Int
+  priceYearlyCents  Int
+  scanLimit   Int // -1 = unlimited
+  features    Json // { resumeBuilder: bool, coverLetters: bool, interviewCoach: bool, rewrite: bool, ... }
+  isActive    Boolean          @default(true)
+  updatedAt   DateTime         @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Templates
+// ---------------------------------------------------------------------------
+
+enum TemplateCategory {
+  ENGINEERING
+  SOFTWARE
+  HEALTHCARE
+  FINANCE
+  CONSTRUCTION
+  ARCHITECTURE
+  PROJECT_MANAGEMENT
+  MECHANICAL
+  ELECTRICAL
+  MEP
+  CIVIL
+  HR
+  MARKETING
+  LEGAL
+  HOSPITALITY
+  SALES
+  TEACHING
+  ACADEMIC
+  GOVERNMENT
+  EXECUTIVE
+  FRESHER
+  INTERNSHIP
+  GENERAL
+}
+
+model Template {
+  id           String            @id @default(cuid())
+  slug         String            @unique
+  name         String
+  category     TemplateCategory
+  description  String
+  isPremium    Boolean           @default(false)
+  isActive     Boolean           @default(true)
+  previewImage String?
+  layoutConfig Json // column count, section order defaults, typography, color tokens
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  resumes Resume[]
+}
+
+// ---------------------------------------------------------------------------
+// Resumes
+// ---------------------------------------------------------------------------
+
+model Resume {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String   @default("Untitled Resume")
+  templateId     String?
+  template       Template? @relation(fields: [templateId], references: [id])
+  targetCountry  String?
+  targetIndustry String?
+  targetJobLevel String?
+  targetJobRole  String?
+  yearsExperience Int?
+  isPrimary      Boolean  @default(false)
+  currentVersionId String? @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  versions       ResumeVersion[] @relation("ResumeVersions")
+  currentVersion ResumeVersion?  @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  atsAnalyses    AtsAnalysis[]
+  coverLetters   CoverLetter[]
+  applications   Application[]
+
+  @@index([userId])
+}
+
+model ResumeVersion {
+  id          String   @id @default(cuid())
+  resumeId    String
+  resume      Resume   @relation("ResumeVersions", fields: [resumeId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  data        Json     // validated ResumeDocument (see packages/shared)
+  changeNote  String?
+  createdBy   String? // "user" | "ai-rewrite" | "import"
+  createdAt   DateTime @default(now())
+
+  usedAsCurrentFor Resume? @relation("CurrentVersion")
+
+  @@unique([resumeId, versionNumber])
+  @@index([resumeId])
+}
+
+// ---------------------------------------------------------------------------
+// ATS Scanner: uploads + job descriptions + analysis
+// ---------------------------------------------------------------------------
+
+enum UploadSourceType {
+  PDF
+  DOCX
+  TXT
+}
+
+model UploadedResume {
+  id           String           @id @default(cuid())
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName     String
+  fileType     UploadSourceType
+  storageKey   String // path/key in object storage
+  rawText      String?          @db.Text
+  parsedStructure Json? // ParsedResume (sections, dates, contact info, detected formatting issues)
+  createdAt    DateTime         @default(now())
+
+  atsAnalyses AtsAnalysis[]
+
+  @@index([userId])
+}
+
+model JobDescription {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company       String?
+  roleTitle     String?
+  rawText       String   @db.Text
+  extractedKeywords Json? // { required: string[], preferred: string[], softSkills: string[] }
+  createdAt     DateTime @default(now())
+
+  atsAnalyses AtsAnalysis[]
+
+  @@index([userId])
+}
+
+enum AtsPlatform {
+  GREENHOUSE
+  LEVER
+  WORKDAY
+  ORACLE_TALEO
+  SAP_SUCCESSFACTORS
+  ICIMS
+  SMARTRECRUITERS
+  JAZZHR
+  BAMBOOHR
+  UKG
+  DAYFORCE
+  GENERIC
+}
+
+model AtsAnalysis {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumeId  String?
+  resume    Resume?  @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  uploadedResumeId String?
+  uploadedResume   UploadedResume? @relation(fields: [uploadedResumeId], references: [id], onDelete: SetNull)
+  jobDescriptionId String?
+  jobDescription   JobDescription? @relation(fields: [jobDescriptionId], references: [id], onDelete: SetNull)
+
+  targetPlatform AtsPlatform @default(GENERIC)
+
+  overallScore           Int
+  atsPassScore           Int
+  recruiterAppealScore   Int
+  roleMatchScore         Int
+  formattingScore        Int
+  keywordScore           Int
+  experienceScore        Int
+  educationScore         Int
+  skillsScore            Int
+  grammarScore           Int
+  atsCompatibilityScore  Int
+  recruiterReadabilityScore Int
+
+  ruleFindings   Json // structural/rule-engine findings (tables, columns, fonts, etc.)
+  keywordMatch   Json // { matched: string[], missing: string[], matchPercent: number }
+  aiAnalysis     Json? // { executiveSummary, strengths, weaknesses, actionPlan, priorityFixes, ... }
+  platformNotes  Json? // simulated per-platform parsing notes/deductions
+
+  interviewProbability   Int?
+  estimatedRecruiterReadTimeSec Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([resumeId])
+}
+
+// ---------------------------------------------------------------------------
+// Cover letters, LinkedIn, interview prep
+// ---------------------------------------------------------------------------
+
+model CoverLetter {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumeId    String?
+  resume      Resume?  @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  company     String?
+  roleTitle   String?
+  jobDescriptionText String? @db.Text
+  content     String   @db.Text
+  tone        String   @default("professional")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model LinkedInOptimization {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline   String?
+  about      String?  @db.Text
+  experienceBullets Json?
+  skills     Json?
+  featured   Json?
+  keywords   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum InterviewQuestionType {
+  TECHNICAL
+  HR
+  BEHAVIORAL
+}
+
+model InterviewSession {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleTitle   String?
+  jobDescriptionText String? @db.Text
+  questions   Json // [{ type, question, suggestedStarAnswer, userAnswer?, feedback? }]
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Application tracker (future-facing but modeled now)
+// ---------------------------------------------------------------------------
+
+enum ApplicationStatus {
+  SAVED
+  APPLIED
+  INTERVIEWING
+  OFFER
+  REJECTED
+}
+
+model Application {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumeId    String?
+  resume      Resume?           @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  company     String
+  roleTitle   String
+  status      ApplicationStatus @default(SAVED)
+  appliedAt   DateTime?
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// AI usage, prompts, admin
+// ---------------------------------------------------------------------------
+
+enum AiProvider {
+  OPENAI
+  ANTHROPIC
+  GEMINI
+}
+
+enum AiFeature {
+  RESUME_ANALYSIS
+  ATS_ANALYSIS
+  KEYWORD_ANALYSIS
+  COVER_LETTER
+  INTERVIEW_PREP
+  LINKEDIN_OPTIMIZATION
+  RESUME_REWRITE
+  BULLET_REWRITE
+}
+
+model PromptTemplate {
+  id          String    @id @default(cuid())
+  feature     AiFeature @unique
+  name        String
+  systemPrompt String   @db.Text
+  userPromptTemplate String @db.Text
+  version     Int       @default(1)
+  isActive    Boolean   @default(true)
+  updatedBy   String?
+  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
+}
+
+model AiUsageLog {
+  id           String     @id @default(cuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature      AiFeature
+  provider     AiProvider
+  model        String
+  promptTokens Int
+  completionTokens Int
+  costMicros   Int // cost in millionths of a dollar to avoid float rounding
+  latencyMs    Int
+  success      Boolean
+  errorMessage String?
+  createdAt    DateTime   @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  targetType String?
+  targetId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+}
