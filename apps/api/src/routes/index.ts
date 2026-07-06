@@ -12,10 +12,12 @@ import { exportRouter } from "./export.routes";
 import { dashboardRouter } from "./dashboard.routes";
 import { applicationsRouter } from "./applications.routes";
 import { accountRouter } from "./account.routes";
+import { plansRouter } from "./plans.routes";
 import { adminRouter } from "./admin";
 
 export const apiRouter = Router();
 
+apiRouter.use("/plans", plansRouter);
 apiRouter.use("/resumes", resumesRouter);
 apiRouter.use("/templates", templatesRouter);
 apiRouter.use("/uploads", uploadsRouter);
