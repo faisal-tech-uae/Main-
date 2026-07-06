@@ -26,7 +26,7 @@ interface ClerkWebhookEvent {
 clerkWebhookRouter.post(
   "/",
   asyncHandler(async (req, res) => {
-    const secret = process.env.CLERK_WEBHOOK_SECRET;
+    const secret = env.CLERK_WEBHOOK_SECRET;
     if (!secret) throw ApiError.badRequest("Clerk webhook secret is not configured");
 
     const svixId = req.headers["svix-id"];

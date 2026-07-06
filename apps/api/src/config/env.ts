@@ -10,6 +10,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   CLERK_SECRET_KEY: optionalString(),
   CLERK_PUBLISHABLE_KEY: optionalString(),
+  CLERK_WEBHOOK_SECRET: optionalString(),
   WEB_APP_URL: z.string().default("http://localhost:3000"),
   OPENAI_API_KEY: optionalString(),
   ANTHROPIC_API_KEY: optionalString(),

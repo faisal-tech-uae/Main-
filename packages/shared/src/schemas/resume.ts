@@ -2,16 +2,22 @@ import { z } from "zod";
 
 // Every entry that represents a time range uses this shape. `current: true`
 // means "present" and `endDate` should be omitted.
+//
+// Dates and contact fields below are intentionally lenient (empty string
+// allowed) rather than hard-required: the builder autosaves work-in-progress
+// resumes, so the storage schema must accept partially-filled documents.
+// Completeness/quality (missing dates, missing contact info, etc.) is
+// enforced by the ATS scoring engine, not by this persistence schema.
 const dateRangeSchema = z.object({
-  startDate: z.string().min(1, "Start date is required"), // ISO "YYYY-MM" or "YYYY-MM-DD"
+  startDate: z.string().default(""), // ISO "YYYY-MM" or "YYYY-MM-DD"
   endDate: z.string().optional(),
   current: z.boolean().default(false),
 });
 
 export const personalInfoSchema = z.object({
-  fullName: z.string().min(1, "Full name is required"),
-  email: z.string().email("Enter a valid email"),
-  phone: z.string().min(1, "Phone number is required"),
+  fullName: z.string().default(""),
+  email: z.union([z.literal(""), z.string().email("Enter a valid email")]).default(""),
+  phone: z.string().default(""),
   location: z.string().optional(),
   country: z.string().optional(),
   linkedinUrl: z.string().url().optional().or(z.literal("")),

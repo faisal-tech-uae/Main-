@@ -50,7 +50,7 @@ export async function runAtsScan(userId: string, input: ScanRequestInput) {
   }
 
   let jobDescriptionText = input.jobDescriptionText;
-  let jobDescriptionId = input.jobDescriptionId;
+  const jobDescriptionId = input.jobDescriptionId;
   if (jobDescriptionId && !jobDescriptionText) {
     const jd = await jobDescriptionRepository.findById(jobDescriptionId, userId);
     if (!jd) throw ApiError.notFound("Job description not found");

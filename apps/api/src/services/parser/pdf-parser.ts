@@ -1,8 +1,20 @@
 // Uses pdf.js directly (legacy Node build) so we get access to per-item text
 // position and font metadata — needed to detect columns/tables/fonts, which
-// higher-level wrappers like pdf-parse don't expose.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pdfjs = require("pdfjs-dist/legacy/build/pdf.mjs");
+// higher-level wrappers like pdf-parse don't expose. pdfjs-dist v4 only ships
+// an ESM build, so it's loaded via a dynamic import from this CommonJS module.
+import { createRequire } from "node:module";
+
+// pdf.js needs to locate its bundled standard font metrics on disk to render
+// text that references non-embedded standard fonts (very common in resumes).
+const standardFontDataUrl = createRequire(__filename)
+  .resolve("pdfjs-dist/package.json")
+  .replace(/package\.json$/, "standard_fonts/");
+
+let pdfjsModulePromise: Promise<any> | undefined;
+function loadPdfjs() {
+  pdfjsModulePromise ??= import("pdfjs-dist/legacy/build/pdf.mjs");
+  return pdfjsModulePromise;
+}
 
 interface TextItem {
   str: string;
@@ -25,7 +37,8 @@ export interface PdfExtractionResult {
 const UNSUPPORTED_CHAR_REGEX = /[^\x09\x0A\x0D\x20-\x7E -ɏ‘’“”–—]/g;
 
 export async function extractPdfStructure(buffer: Buffer): Promise<PdfExtractionResult> {
-  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer) });
+  const pdfjs = await loadPdfjs();
+  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer), standardFontDataUrl });
   const doc = await loadingTask.promise;
 
   const fontNames = new Set<string>();

@@ -1,4 +1,4 @@
-import { PrismaClient, TemplateCategory, AiFeature } from "@prisma/client";
+import { PrismaClient, TemplateCategory, AiFeature, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -55,7 +55,7 @@ const TEMPLATES: Array<{
   category: TemplateCategory;
   description: string;
   isPremium: boolean;
-  layoutConfig: Record<string, unknown>;
+  layoutConfig: Prisma.InputJsonValue;
 }> = [
   {
     slug: "classic-ats",
