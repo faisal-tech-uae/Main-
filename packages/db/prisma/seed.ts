@@ -259,7 +259,7 @@ async function main() {
       systemPrompt:
         "You are a senior recruiter and resume strategist with 15 years of experience across industries. Analyze resumes objectively and return structured, actionable JSON only.",
       userPromptTemplate:
-        "Analyze the following resume for the target role \"{{targetRole}}\" in the \"{{targetIndustry}}\" industry ({{targetCountry}}). Resume:\n\n{{resumeText}}\n\nReturn JSON with: executiveSummary, strengths[], weaknesses[], atsProblems[], formattingProblems[], missingKeywords[], actionPlan[], priorityFixes[], estimatedInterviewProbability (0-100), estimatedRecruiterReadability (0-100), estimatedAtsPassProbability (0-100).",
+        "Analyze the following resume for the target role \"{{targetRole}}\" in the \"{{targetIndustry}}\" industry ({{targetCountry}}, job level: {{jobLevel}}).\n\n{{disciplineGlossary}}\n\nResume:\n\n{{resumeText}}\n\nReturn JSON with: executiveSummary, strengths[], weaknesses[], atsProblems[], formattingProblems[], missingKeywords[], actionPlan[], priorityFixes[], estimatedInterviewProbability (0-100), estimatedRecruiterReadability (0-100), estimatedAtsPassProbability (0-100). If a discipline glossary was provided, missingKeywords and priorityFixes should call out relevant missing terminology, systems, tools, or UAE certifications/approvals from it — not generic advice.",
     },
     {
       feature: "ATS_ANALYSIS",
@@ -275,7 +275,7 @@ async function main() {
       systemPrompt:
         "You extract and compare hard skills, soft skills, tools, certifications, and seniority signals between a resume and a job description.",
       userPromptTemplate:
-        "Resume:\n{{resumeText}}\n\nJob Description:\n{{jobDescriptionText}}\n\nReturn JSON: matchedKeywords[], missingKeywords[], missingSkills[], experienceGap, educationGap, softSkillsGap[], technicalSkillsGap[], priorityRecommendations[], keywordMatchPercent.",
+        "{{disciplineGlossary}}\n\nResume:\n{{resumeText}}\n\nJob Description:\n{{jobDescriptionText}}\n\nReturn JSON: matchedKeywords[], missingKeywords[], missingSkills[], experienceGap, educationGap, softSkillsGap[], technicalSkillsGap[], priorityRecommendations[], keywordMatchPercent. Use precise discipline terminology from the glossary above where relevant instead of generic phrasing.",
     },
     {
       feature: "COVER_LETTER",
@@ -283,7 +283,7 @@ async function main() {
       systemPrompt:
         "You write concise, specific, ATS-friendly cover letters that reference real resume achievements and avoid generic filler.",
       userPromptTemplate:
-        "Write a cover letter for {{roleTitle}} at {{company}} using this resume:\n{{resumeText}}\n\nJob description:\n{{jobDescriptionText}}\n\nTone: {{tone}}. Keep it under 350 words, 3-4 paragraphs.",
+        "Write a cover letter for {{roleTitle}} at {{company}} using this resume:\n{{resumeText}}\n\nJob description:\n{{jobDescriptionText}}\n\n{{disciplineGlossary}}\n\nTone: {{tone}}. Keep it under 350 words, 3-4 paragraphs.",
     },
     {
       feature: "INTERVIEW_PREP",
@@ -291,7 +291,7 @@ async function main() {
       systemPrompt:
         "You generate realistic interview questions tailored to a candidate's resume and target role, with STAR-method model answers grounded in the candidate's real experience.",
       userPromptTemplate:
-        "Resume:\n{{resumeText}}\n\nTarget role: {{roleTitle}}\n\nGenerate 5 technical, 5 behavioral, and 3 HR questions. For each, include a suggested STAR-format answer using only facts present in the resume.",
+        "Resume:\n{{resumeText}}\n\nTarget role: {{roleTitle}}\n\n{{disciplineGlossary}}\n\nGenerate 5 technical, 5 behavioral, and 3 HR questions. If a discipline glossary was provided, technical questions should probe its specific systems/standards/tools. For each, include a suggested STAR-format answer using only facts present in the resume.",
     },
     {
       feature: "LINKEDIN_OPTIMIZATION",
@@ -299,7 +299,7 @@ async function main() {
       systemPrompt:
         "You optimize LinkedIn profiles for recruiter search visibility while keeping an authentic, human voice.",
       userPromptTemplate:
-        "Based on this resume:\n{{resumeText}}\n\nGenerate a LinkedIn headline (under 220 chars), an About section (under 2000 chars), 3 Featured suggestions, and a prioritized skills list with search keywords.",
+        "Based on this resume:\n{{resumeText}}\n\n{{disciplineGlossary}}\n\nGenerate a LinkedIn headline (under 220 chars), an About section (under 2000 chars), 3 Featured suggestions, and a prioritized skills list with search keywords. Prioritize discipline-specific systems/tools/certifications where a glossary was provided.",
     },
     {
       feature: "RESUME_REWRITE",
@@ -307,7 +307,7 @@ async function main() {
       systemPrompt:
         "You rewrite resumes to maximize clarity, impact, and ATS compatibility while preserving every fact: employers, dates, titles, and years of experience must never be altered or invented.",
       userPromptTemplate:
-        "Rewrite the following resume content for maximum impact and ATS compatibility. Do not invent facts, change employers, dates, or titles. Use strong action verbs and quantify achievements only where numbers are already present or can be reasonably inferred from context.\n\n{{resumeText}}",
+        "Rewrite the following resume content for maximum impact and ATS compatibility. Do not invent facts, change employers, dates, or titles. Use strong action verbs and quantify achievements only where numbers are already present or can be reasonably inferred from context.\n\n{{disciplineGlossary}}\n\n{{resumeText}}",
     },
     {
       feature: "BULLET_REWRITE",
@@ -315,7 +315,15 @@ async function main() {
       systemPrompt:
         "You convert task-oriented resume bullets into accomplishment-oriented, quantified, ATS-friendly bullets using the STAR method and strong action verbs.",
       userPromptTemplate:
-        "Rewrite this bullet point for a {{roleTitle}} resume. Keep it factually identical, one line, starting with a strong action verb:\n\n{{bulletText}}",
+        "Rewrite this bullet point for a {{roleTitle}} resume. Keep it factually identical, one line, starting with a strong action verb:\n\n{{bulletText}}\n\n{{disciplineGlossary}}",
+    },
+    {
+      feature: "RESUME_STRUCTURING",
+      name: "CV Upload → Structured Resume",
+      systemPrompt:
+        "You convert unstructured resume/CV text (extracted from a PDF or DOCX upload) into a clean structured JSON representation. Extract only what is actually present in the text — never invent employers, dates, titles, schools, or skills.",
+      userPromptTemplate:
+        "Raw extracted resume text:\n{{resumeText}}\n\n{{disciplineGlossary}}\n\nReturn a JSON object with keys: personalInfo, summary, experience[], projects[], education[], certifications[], skills[], languages[], awards[], volunteer[], detectedDiscipline. Dates normalized to \"YYYY-MM\" where known. Split responsibilities into separate one-line bullets.",
     },
   ];
 

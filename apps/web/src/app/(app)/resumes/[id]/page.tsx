@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PersonalInfoForm } from "@/components/resume-builder/personal-info-form";
+import { PhotoUpload } from "@/components/resume-builder/photo-upload";
+import { DisciplineSelect } from "@/components/discipline-select";
 import { ExperienceForm } from "@/components/resume-builder/experience-form";
 import { ProjectsForm } from "@/components/resume-builder/projects-form";
 import { EducationForm } from "@/components/resume-builder/education-form";
@@ -88,8 +90,15 @@ export default function ResumeBuilderPage({ params }: { params: Promise<{ id: st
     await refetch();
   }
 
-  async function handleExport(format: "pdf" | "docx") {
-    await api.downloadFile(`/api/export/${id}/${format}`, `resume.${format}`);
+  async function handleExport(format: "pdf" | "docx", variant?: "visual") {
+    const query = variant ? `?variant=${variant}` : "";
+    const filename = variant ? `resume-visual.${format}` : `resume.${format}`;
+    await api.downloadFile(`/api/export/${id}/${format}${query}`, filename);
+  }
+
+  async function handleDisciplineChange(value: string) {
+    await api.put(`/api/resumes/${id}/meta`, { targetDiscipline: value === "none" ? undefined : value });
+    refetch();
   }
 
   if (loading || !resume) return <p className="text-muted-foreground">Loading resume…</p>;
@@ -98,11 +107,20 @@ export default function ResumeBuilderPage({ params }: { params: Promise<{ id: st
     <FormProvider {...form}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Input
-            className="max-w-xs text-lg font-semibold"
-            defaultValue={resume.title}
-            onBlur={(e) => api.put(`/api/resumes/${id}/content`, { data: form.getValues(), changeNote: `Renamed to ${e.target.value}` })}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              className="max-w-xs text-lg font-semibold"
+              defaultValue={resume.title}
+              onBlur={(e) => api.put(`/api/resumes/${id}/content`, { data: form.getValues(), changeNote: `Renamed to ${e.target.value}` })}
+            />
+            <div className="w-56">
+              <DisciplineSelect
+                value={resume.targetDiscipline ?? "none"}
+                onValueChange={handleDisciplineChange}
+                placeholder="Discipline"
+              />
+            </div>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             {savedAt && <span className="text-xs text-muted-foreground">Saved {savedAt.toLocaleTimeString()}</span>}
             <Button variant="outline" onClick={handleFullRewrite} disabled={rewriting}>
@@ -122,9 +140,17 @@ export default function ResumeBuilderPage({ params }: { params: Promise<{ id: st
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" onClick={() => handleExport("pdf")}>
-              <FileDown className="h-4 w-4" /> PDF
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <FileDown className="h-4 w-4" /> Export PDF
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport("pdf")}>ATS-Safe (single column, no photo)</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("pdf", "visual")}>Visual / Non-ATS (photo, designed layout)</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="outline" onClick={() => handleExport("docx")}>
               <Download className="h-4 w-4" /> DOCX
             </Button>
@@ -144,7 +170,12 @@ export default function ResumeBuilderPage({ params }: { params: Promise<{ id: st
               ))}
             </TabsList>
 
-            <TabsContent value="personal">
+            <TabsContent value="personal" className="space-y-4">
+              <PhotoUpload
+                resumeId={id}
+                photoUrl={liveDoc?.personalInfo?.photoUrl}
+                onUploaded={(newPhotoUrl) => form.setValue("personalInfo.photoUrl", newPhotoUrl, { shouldDirty: true })}
+              />
               <PersonalInfoForm />
             </TabsContent>
             <TabsContent value="experience">

@@ -4,6 +4,7 @@ import { resumeDocumentToStructure } from "./resume-to-structure";
 import { linkedinRepository } from "../repositories/linkedin.repository";
 import { createAiClientForUser } from "../lib/ai";
 import { ApiError } from "../lib/errors";
+import { resolveDisciplineGlossary } from "../lib/discipline";
 
 export async function generateLinkedInOptimization(userId: string, resumeId: string) {
   const resume = await resumeService.getById(resumeId, userId);
@@ -12,7 +13,8 @@ export async function generateLinkedInOptimization(userId: string, resumeId: str
 
   const { rawText } = resumeDocumentToStructure(doc);
   const aiClient = await createAiClientForUser(userId);
-  const result = await aiClient.optimizeLinkedIn({ resumeText: rawText });
+  const disciplineGlossary = resolveDisciplineGlossary({ targetDiscipline: resume.targetDiscipline, targetJobRole: resume.targetJobRole });
+  const result = await aiClient.optimizeLinkedIn({ resumeText: rawText, disciplineGlossary });
 
   return linkedinRepository.create(userId, {
     headline: result.headline,

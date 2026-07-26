@@ -64,3 +64,87 @@ export const bulletRewriteResultSchema = z.object({
   rationale: z.string(),
 });
 export type BulletRewriteResult = z.infer<typeof bulletRewriteResultSchema>;
+
+// Lenient by design: this is a best-effort extraction from unstructured text,
+// so every field defaults to an empty value rather than failing the whole
+// parse when the model omits something. The API layer (structuring.service.ts)
+// wraps the call in a try/catch and falls back to an empty document if the
+// model's output doesn't validate at all — the builder UI lets the user fix
+// anything mis-extracted either way.
+const structuringDateRange = z.object({
+  startDate: z.string().default(""),
+  endDate: z.string().optional(),
+  current: z.boolean().default(false),
+});
+
+export const resumeStructuringResultSchema = z.object({
+  personalInfo: z
+    .object({
+      fullName: z.string().default(""),
+      email: z.string().default(""),
+      phone: z.string().default(""),
+      location: z.string().optional(),
+      linkedinUrl: z.string().optional(),
+      githubUrl: z.string().optional(),
+      portfolioUrl: z.string().optional(),
+      jobTitle: z.string().optional(),
+    })
+    .default({ fullName: "", email: "", phone: "" }),
+  summary: z.string().optional(),
+  experience: z
+    .array(
+      structuringDateRange.extend({
+        jobTitle: z.string().default(""),
+        employer: z.string().default(""),
+        location: z.string().optional(),
+        bullets: z.array(z.string()).default([]),
+      })
+    )
+    .default([]),
+  projects: z
+    .array(
+      structuringDateRange.extend({
+        name: z.string().default(""),
+        role: z.string().optional(),
+        bullets: z.array(z.string()).default([]),
+      })
+    )
+    .default([]),
+  education: z
+    .array(
+      structuringDateRange.extend({
+        institution: z.string().default(""),
+        degree: z.string().default(""),
+        fieldOfStudy: z.string().optional(),
+        gpa: z.string().optional(),
+      })
+    )
+    .default([]),
+  certifications: z
+    .array(
+      z.object({
+        name: z.string().default(""),
+        issuer: z.string().optional(),
+        issueDate: z.string().optional(),
+      })
+    )
+    .default([]),
+  skills: z.array(z.object({ category: z.string().default("Skills"), items: z.array(z.string()).default([]) })).default([]),
+  languages: z
+    .array(z.object({ language: z.string().default(""), proficiency: z.string().default("Professional Working") }))
+    .default([]),
+  awards: z
+    .array(z.object({ title: z.string().default(""), issuer: z.string().optional(), date: z.string().optional() }))
+    .default([]),
+  volunteer: z
+    .array(
+      structuringDateRange.extend({
+        organization: z.string().default(""),
+        role: z.string().optional(),
+        bullets: z.array(z.string()).default([]),
+      })
+    )
+    .default([]),
+  detectedDiscipline: z.string().optional(),
+});
+export type ResumeStructuringResult = z.infer<typeof resumeStructuringResultSchema>;

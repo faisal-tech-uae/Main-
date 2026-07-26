@@ -174,6 +174,8 @@ model Resume {
   targetIndustry String?
   targetJobLevel String?
   targetJobRole  String?
+  /** MEP/engineering discipline id (see packages/shared MEP_DISCIPLINES), e.g. "hvac", "mep-engineer". */
+  targetDiscipline String?
   yearsExperience Int?
   isPrimary      Boolean  @default(false)
   currentVersionId String? @unique
@@ -404,6 +406,7 @@ enum AiFeature {
   LINKEDIN_OPTIMIZATION
   RESUME_REWRITE
   BULLET_REWRITE
+  RESUME_STRUCTURING
 }
 
 model PromptTemplate {

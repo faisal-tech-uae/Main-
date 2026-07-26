@@ -10,6 +10,7 @@ import {
   linkedinOptimizationResultSchema,
   resumeRewriteResultSchema,
   bulletRewriteResultSchema,
+  resumeStructuringResultSchema,
   type ResumeAnalysisResult,
   type AtsAnalysisAiResult,
   type KeywordAnalysisResult,
@@ -17,6 +18,7 @@ import {
   type LinkedinOptimizationResult,
   type ResumeRewriteResult,
   type BulletRewriteResult,
+  type ResumeStructuringResult,
 } from "./schemas";
 
 export interface AiUsageEvent {
@@ -50,7 +52,10 @@ export class AiClient {
     return this.options.promptOverrides?.[feature] ?? DEFAULT_PROMPTS[feature];
   }
 
-  private async runJson<T>(feature: AiFeature, variables: Record<string, string | number | undefined>, schema: z.ZodType<T>): Promise<T> {
+  // Input is deliberately `any`: schemas using `.default()`/`.optional()` have an
+  // input type narrower than their output type, and we only care that the
+  // *output* (T) matches — not that the schema also accepts T as input.
+  private async runJson<T>(feature: AiFeature, variables: Record<string, string | number | undefined>, schema: z.ZodType<T, z.ZodTypeDef, any>): Promise<T> {
     const prompt = this.promptFor(feature);
     const userPrompt = renderTemplate(prompt.userPromptTemplate, variables);
     const { provider } = this.options;
@@ -123,7 +128,7 @@ export class AiClient {
     }
   }
 
-  analyzeResume(vars: { resumeText: string; targetRole?: string; targetIndustry?: string; targetCountry?: string; jobLevel?: string }): Promise<ResumeAnalysisResult> {
+  analyzeResume(vars: { resumeText: string; targetRole?: string; targetIndustry?: string; targetCountry?: string; jobLevel?: string; disciplineGlossary?: string }): Promise<ResumeAnalysisResult> {
     return this.runJson("RESUME_ANALYSIS", vars, resumeAnalysisResultSchema);
   }
 
@@ -131,27 +136,31 @@ export class AiClient {
     return this.runJson("ATS_ANALYSIS", vars, atsAnalysisAiResultSchema);
   }
 
-  analyzeKeywords(vars: { resumeText: string; jobDescriptionText: string; ruleBasedMatch: string }): Promise<KeywordAnalysisResult> {
+  analyzeKeywords(vars: { resumeText: string; jobDescriptionText: string; ruleBasedMatch: string; disciplineGlossary?: string }): Promise<KeywordAnalysisResult> {
     return this.runJson("KEYWORD_ANALYSIS", vars, keywordAnalysisResultSchema);
   }
 
-  generateCoverLetter(vars: { resumeText: string; company: string; roleTitle: string; jobDescriptionText?: string; tone?: string }): Promise<string> {
+  generateCoverLetter(vars: { resumeText: string; company: string; roleTitle: string; jobDescriptionText?: string; tone?: string; disciplineGlossary?: string }): Promise<string> {
     return this.runText("COVER_LETTER", { ...vars, tone: vars.tone ?? "professional" });
   }
 
-  generateInterviewPrep(vars: { resumeText: string; roleTitle: string; jobDescriptionText?: string }): Promise<InterviewPrepResult> {
+  generateInterviewPrep(vars: { resumeText: string; roleTitle: string; jobDescriptionText?: string; disciplineGlossary?: string }): Promise<InterviewPrepResult> {
     return this.runJson("INTERVIEW_PREP", vars, interviewPrepResultSchema);
   }
 
-  optimizeLinkedIn(vars: { resumeText: string }): Promise<LinkedinOptimizationResult> {
+  optimizeLinkedIn(vars: { resumeText: string; disciplineGlossary?: string }): Promise<LinkedinOptimizationResult> {
     return this.runJson("LINKEDIN_OPTIMIZATION", vars, linkedinOptimizationResultSchema);
   }
 
-  rewriteResume(vars: { resumeText: string }): Promise<ResumeRewriteResult> {
+  rewriteResume(vars: { resumeText: string; disciplineGlossary?: string }): Promise<ResumeRewriteResult> {
     return this.runJson("RESUME_REWRITE", vars, resumeRewriteResultSchema);
   }
 
-  rewriteBullet(vars: { bulletText: string; roleTitle?: string }): Promise<BulletRewriteResult> {
+  rewriteBullet(vars: { bulletText: string; roleTitle?: string; disciplineGlossary?: string }): Promise<BulletRewriteResult> {
     return this.runJson("BULLET_REWRITE", vars, bulletRewriteResultSchema);
+  }
+
+  structureResume(vars: { resumeText: string; disciplineGlossary?: string }): Promise<ResumeStructuringResult> {
+    return this.runJson<ResumeStructuringResult>("RESUME_STRUCTURING", vars, resumeStructuringResultSchema);
   }
 }

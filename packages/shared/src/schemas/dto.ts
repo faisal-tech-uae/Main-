@@ -8,9 +8,14 @@ export const createResumeSchema = z.object({
   targetIndustry: z.string().optional(),
   targetJobLevel: z.string().optional(),
   targetJobRole: z.string().optional(),
+  /** MEP discipline id from MEP_DISCIPLINES (packages/shared/src/constants/mep-disciplines.ts), e.g. "hvac". */
+  targetDiscipline: z.string().optional(),
   yearsExperience: z.number().int().min(0).max(60).optional(),
 });
 export type CreateResumeInput = z.infer<typeof createResumeSchema>;
+
+export const updateResumeMetaSchema = createResumeSchema.partial();
+export type UpdateResumeMetaInput = z.infer<typeof updateResumeMetaSchema>;
 
 export const updateResumeContentSchema = z.object({
   data: resumeDocumentSchema,
@@ -47,6 +52,8 @@ export const scanRequestSchema = z.object({
   jobDescriptionId: z.string().optional(),
   jobDescriptionText: z.string().optional(),
   targetPlatform: atsPlatformSchema.default("GENERIC"),
+  /** MEP discipline id (see MEP_DISCIPLINES) — only used when scanning an uploaded file without a linked resume. */
+  targetDiscipline: z.string().optional(),
 });
 export type ScanRequestInput = z.infer<typeof scanRequestSchema>;
 
@@ -69,5 +76,7 @@ export type InterviewPrepRequestInput = z.infer<typeof interviewPrepRequestSchem
 export const bulletRewriteRequestSchema = z.object({
   bulletText: z.string().min(1),
   roleTitle: z.string().optional(),
+  /** Optional owning resume id, used only to resolve discipline terminology for the rewrite — ownership isn't re-checked here. */
+  resumeId: z.string().optional(),
 });
 export type BulletRewriteRequestInput = z.infer<typeof bulletRewriteRequestSchema>;

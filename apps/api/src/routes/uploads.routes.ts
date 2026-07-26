@@ -1,13 +1,16 @@
 import { Router } from "express";
 import multer from "multer";
+import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
 import { uploadRateLimiter } from "../middleware/rate-limit";
+import { validateBody } from "../middleware/validate";
 import { asyncHandler } from "../lib/async-handler";
 import { ApiError } from "../lib/errors";
 import { env } from "../config/env";
 import { inferUploadType, parseResumeFile } from "../services/parser.service";
 import { storage } from "../lib/storage";
 import { uploadedResumeRepository } from "../repositories/uploaded-resume.repository";
+import { structureUploadedResume } from "../services/structuring.service";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -36,5 +39,16 @@ uploadsRouter.post(
     });
 
     res.status(201).json({ data: uploaded });
+  })
+);
+
+const convertSchema = z.object({ targetDiscipline: z.string().optional() });
+
+uploadsRouter.post(
+  "/:id/convert-to-resume",
+  validateBody(convertSchema),
+  asyncHandler(async (req, res) => {
+    const result = await structureUploadedResume(req.currentUser!.id, req.params.id, req.body.targetDiscipline);
+    res.status(201).json({ data: result });
   })
 );

@@ -3,10 +3,22 @@ import type { BulletRewriteRequestInput } from "@resumeai/shared";
 import { resumeService } from "./resume.service";
 import { createAiClientForUser } from "../lib/ai";
 import { ApiError } from "../lib/errors";
+import { resolveDisciplineGlossary } from "../lib/discipline";
 
 export async function rewriteBullet(userId: string, input: BulletRewriteRequestInput) {
   const aiClient = await createAiClientForUser(userId);
-  return aiClient.rewriteBullet(input);
+
+  let disciplineGlossary = "";
+  if (input.resumeId) {
+    try {
+      const resume = await resumeService.getById(input.resumeId, userId);
+      disciplineGlossary = resolveDisciplineGlossary({ targetDiscipline: resume.targetDiscipline, targetJobRole: resume.targetJobRole });
+    } catch {
+      // Unknown/unowned resumeId — proceed without discipline context rather than failing the rewrite.
+    }
+  }
+
+  return aiClient.rewriteBullet({ ...input, disciplineGlossary });
 }
 
 /**
@@ -23,12 +35,13 @@ export async function rewriteEntireResume(userId: string, resumeId: string) {
   if (!doc) throw ApiError.badRequest("Resume has no content yet");
 
   const aiClient = await createAiClientForUser(userId);
+  const disciplineGlossary = resolveDisciplineGlossary({ targetDiscipline: resume.targetDiscipline, targetJobRole: resume.targetJobRole });
 
   const rewriteList = async (bullets: string[], roleTitle?: string) =>
     Promise.all(
       bullets.map(async (bullet) => {
         try {
-          const result = await aiClient.rewriteBullet({ bulletText: bullet, roleTitle });
+          const result = await aiClient.rewriteBullet({ bulletText: bullet, roleTitle, disciplineGlossary });
           return result.rewritten;
         } catch {
           return bullet; // fall back to the original bullet if the AI call fails
@@ -42,7 +55,7 @@ export async function rewriteEntireResume(userId: string, resumeId: string) {
     Promise.all(doc.volunteer.map(async (v) => ({ ...v, bullets: await rewriteList(v.bullets, v.role) }))),
     doc.summary?.content
       ? aiClient
-          .rewriteBullet({ bulletText: doc.summary.content, roleTitle: doc.personalInfo.jobTitle })
+          .rewriteBullet({ bulletText: doc.summary.content, roleTitle: doc.personalInfo.jobTitle, disciplineGlossary })
           .then((r) => r.rewritten)
           .catch(() => doc.summary!.content)
       : Promise.resolve(doc.summary?.content ?? ""),

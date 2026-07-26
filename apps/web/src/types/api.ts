@@ -15,6 +15,7 @@ export interface ResumeSummary {
   targetIndustry?: string | null;
   targetJobRole?: string | null;
   targetCountry?: string | null;
+  targetDiscipline?: string | null;
   updatedAt: string;
   isPrimary: boolean;
   templateId?: string | null;

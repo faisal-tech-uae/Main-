@@ -1,12 +1,21 @@
 import { Router } from "express";
-import { createResumeSchema, updateResumeContentSchema } from "@resumeai/shared";
+import multer from "multer";
+import { createResumeSchema, updateResumeContentSchema, updateResumeMetaSchema } from "@resumeai/shared";
 import { requireAuth } from "../middleware/auth";
 import { requirePlanFeature } from "../middleware/plan-feature";
-import { aiRateLimiter } from "../middleware/rate-limit";
+import { aiRateLimiter, uploadRateLimiter } from "../middleware/rate-limit";
 import { validateBody } from "../middleware/validate";
 import { asyncHandler } from "../lib/async-handler";
+import { ApiError } from "../lib/errors";
+import { env } from "../config/env";
 import { resumeService } from "../services/resume.service";
 import { rewriteEntireResume } from "../services/rewrite.service";
+import { getResumePhoto, uploadResumePhoto } from "../services/photo.service";
+
+const photoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: env.MAX_UPLOAD_SIZE_MB * 1024 * 1024 },
+});
 
 export const resumesRouter = Router();
 resumesRouter.use(requireAuth);
@@ -38,11 +47,42 @@ resumesRouter.get(
 );
 
 resumesRouter.put(
+  "/:id/meta",
+  validateBody(updateResumeMetaSchema),
+  asyncHandler(async (req, res) => {
+    await resumeService.updateMeta(req.params.id, req.currentUser!.id, req.body);
+    const resume = await resumeService.getById(req.params.id, req.currentUser!.id);
+    res.json({ data: resume });
+  })
+);
+
+resumesRouter.put(
   "/:id/content",
   validateBody(updateResumeContentSchema),
   asyncHandler(async (req, res) => {
     const resume = await resumeService.updateContent(req.params.id, req.currentUser!.id, req.body.data, req.body.changeNote);
     res.json({ data: resume });
+  })
+);
+
+resumesRouter.post(
+  "/:id/photo",
+  uploadRateLimiter,
+  photoUpload.single("file"),
+  asyncHandler(async (req, res) => {
+    if (!req.file) throw ApiError.badRequest("No file uploaded. Attach a JPEG or PNG photo as 'file'.");
+    const resume = await uploadResumePhoto(req.currentUser!.id, req.params.id, req.file.buffer);
+    res.status(201).json({ data: resume });
+  })
+);
+
+resumesRouter.get(
+  "/:id/photo/:key",
+  asyncHandler(async (req, res) => {
+    const buffer = await getResumePhoto(req.currentUser!.id, req.params.id, req.params.key);
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Cache-Control", "private, max-age=86400");
+    res.send(buffer);
   })
 );
 

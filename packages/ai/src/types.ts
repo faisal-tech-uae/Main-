@@ -8,7 +8,8 @@ export type AiFeature =
   | "INTERVIEW_PREP"
   | "LINKEDIN_OPTIMIZATION"
   | "RESUME_REWRITE"
-  | "BULLET_REWRITE";
+  | "BULLET_REWRITE"
+  | "RESUME_STRUCTURING";
 
 export interface PromptSpec {
   systemPrompt: string;

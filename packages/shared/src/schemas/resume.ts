@@ -24,6 +24,8 @@ export const personalInfoSchema = z.object({
   githubUrl: z.string().url().optional().or(z.literal("")),
   portfolioUrl: z.string().url().optional().or(z.literal("")),
   jobTitle: z.string().optional(),
+  /** Relative API path (e.g. "/api/resumes/:id/photo") to the processed headshot, if uploaded. */
+  photoUrl: z.string().optional(),
 });
 
 export const summarySchema = z.object({

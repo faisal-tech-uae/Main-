@@ -15,6 +15,7 @@ import {
 } from "./resume-to-structure";
 import { ApiError } from "../lib/errors";
 import type { ResumeDocument } from "@resumeai/shared";
+import { resolveDisciplineGlossary } from "../lib/discipline";
 
 export async function runAtsScan(userId: string, input: ScanRequestInput) {
   if (!input.resumeId && !input.uploadedResumeId) {
@@ -23,6 +24,7 @@ export async function runAtsScan(userId: string, input: ScanRequestInput) {
 
   let structureInput: Parameters<typeof analyzeResume>[0];
   let resumeTextForAi: string;
+  let disciplineGlossary: string;
 
   if (input.resumeId) {
     const resume = await resumeService.getById(input.resumeId, userId);
@@ -41,12 +43,14 @@ export async function runAtsScan(userId: string, input: ScanRequestInput) {
       dateStrings: collectDateStrings(doc),
     };
     resumeTextForAi = structure.rawText;
+    disciplineGlossary = resolveDisciplineGlossary({ targetDiscipline: resume.targetDiscipline, targetJobRole: resume.targetJobRole });
   } else {
     const uploaded = await uploadedResumeRepository.findById(input.uploadedResumeId!, userId);
     if (!uploaded) throw ApiError.notFound("Uploaded resume not found");
     const structure = uploaded.parsedStructure as unknown as ParsedResumeStructure;
     structureInput = { structure };
     resumeTextForAi = uploaded.rawText ?? "";
+    disciplineGlossary = resolveDisciplineGlossary({ targetDiscipline: input.targetDiscipline });
   }
 
   let jobDescriptionText = input.jobDescriptionText;
@@ -69,7 +73,7 @@ export async function runAtsScan(userId: string, input: ScanRequestInput) {
 
   const [resumeAnalysis, platformAnalysis, keywordAnalysis] = await Promise.all([
     aiClient
-      .analyzeResume({ resumeText: resumeTextForAi })
+      .analyzeResume({ resumeText: resumeTextForAi, disciplineGlossary })
       .catch((error) => ({ error: error instanceof Error ? error.message : "AI analysis unavailable" })),
     aiClient
       .analyzeAtsPlatform({
@@ -84,6 +88,7 @@ export async function runAtsScan(userId: string, input: ScanRequestInput) {
             resumeText: resumeTextForAi,
             jobDescriptionText,
             ruleBasedMatch: JSON.stringify(ruleResult.keywordMatch),
+            disciplineGlossary,
           })
           .catch((error) => ({ error: error instanceof Error ? error.message : "AI keyword analysis unavailable" }))
       : Promise.resolve(null),

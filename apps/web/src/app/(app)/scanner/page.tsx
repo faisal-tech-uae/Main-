@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ScanSearch } from "lucide-react";
+import { ScanSearch, Wand2 } from "lucide-react";
 import { useApi } from "@/hooks/use-api";
 import { useResource } from "@/hooks/use-resource";
 import { FileDropzone } from "@/components/file-dropzone";
+import { DisciplineSelect } from "@/components/discipline-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,8 +31,10 @@ export default function ScannerPage() {
   const [selectedResumeId, setSelectedResumeId] = useState<string>("");
   const [jobDescriptionText, setJobDescriptionText] = useState("");
   const [targetPlatform, setTargetPlatform] = useState("GENERIC");
+  const [discipline, setDiscipline] = useState("none");
   const [uploading, setUploading] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [converting, setConverting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleFile(file: File) {
@@ -58,6 +61,7 @@ export default function ScannerPage() {
         uploadedResumeId: uploadedResume?.id,
         jobDescriptionText: jobDescriptionText || undefined,
         targetPlatform,
+        targetDiscipline: discipline === "none" ? undefined : discipline,
       });
       router.push(`/scanner/${result.analysis.id}`);
     } catch (err) {
@@ -65,6 +69,22 @@ export default function ScannerPage() {
     } finally {
       setScanning(false);
       refetchScans();
+    }
+  }
+
+  async function handleConvertToResume() {
+    if (!uploadedResume) return;
+    setConverting(true);
+    setError(null);
+    try {
+      const result = await api.post<{ resume: { id: string } }>(`/api/uploads/${uploadedResume.id}/convert-to-resume`, {
+        targetDiscipline: discipline === "none" ? undefined : discipline,
+      });
+      router.push(`/resumes/${result.resume.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't convert this file into an editable resume");
+    } finally {
+      setConverting(false);
     }
   }
 
@@ -87,7 +107,14 @@ export default function ScannerPage() {
             <TabsContent value="upload">
               <FileDropzone onFile={handleFile} />
               {uploading && <p className="mt-2 text-sm text-muted-foreground">Parsing your resume…</p>}
-              {uploadedResume && <p className="mt-2 text-sm text-success">Loaded: {uploadedResume.fileName}</p>}
+              {uploadedResume && (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <p className="text-sm text-success">Loaded: {uploadedResume.fileName}</p>
+                  <Button type="button" size="sm" variant="outline" onClick={handleConvertToResume} disabled={converting}>
+                    <Wand2 className="h-4 w-4" /> {converting ? "Converting…" : "Convert to editable resume"}
+                  </Button>
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="existing">
               <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
@@ -109,7 +136,17 @@ export default function ScannerPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>2. Job description (optional)</CardTitle>
+          <CardTitle>2. Engineering discipline (optional)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label>Improves keyword suggestions, interview questions, and rewrites with the right MEP/UAE terminology</Label>
+          <DisciplineSelect value={discipline} onValueChange={setDiscipline} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>3. Job description (optional)</CardTitle>
         </CardHeader>
         <CardContent>
           <Label>Paste the job description for role-match scoring and keyword gap analysis</Label>
@@ -119,7 +156,7 @@ export default function ScannerPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>3. Target ATS platform</CardTitle>
+          <CardTitle>4. Target ATS platform</CardTitle>
         </CardHeader>
         <CardContent>
           <Select value={targetPlatform} onValueChange={setTargetPlatform}>

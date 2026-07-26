@@ -1,4 +1,10 @@
-import { createEmptyResumeDocument, resumeDocumentSchema, type CreateResumeInput, type ResumeDocument } from "@resumeai/shared";
+import {
+  createEmptyResumeDocument,
+  resumeDocumentSchema,
+  type CreateResumeInput,
+  type ResumeDocument,
+  type UpdateResumeMetaInput,
+} from "@resumeai/shared";
 import { resumeRepository } from "../repositories/resume.repository";
 import { ApiError } from "../lib/errors";
 
@@ -35,6 +41,11 @@ export const resumeService = {
     const version = resume.versions.find((v) => v.id === versionId);
     if (!version) throw ApiError.notFound("Resume version not found");
     return resumeRepository.restoreVersion(resumeId, versionId);
+  },
+
+  async updateMeta(resumeId: string, userId: string, data: UpdateResumeMetaInput) {
+    await this.getById(resumeId, userId);
+    return resumeRepository.updateMeta(resumeId, userId, data);
   },
 
   async remove(resumeId: string, userId: string) {

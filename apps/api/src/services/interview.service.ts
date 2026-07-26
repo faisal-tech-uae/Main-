@@ -5,6 +5,7 @@ import { resumeDocumentToStructure } from "./resume-to-structure";
 import { interviewRepository } from "../repositories/interview.repository";
 import { createAiClientForUser } from "../lib/ai";
 import { ApiError } from "../lib/errors";
+import { resolveDisciplineGlossary } from "../lib/discipline";
 
 export async function generateInterviewPrep(userId: string, input: InterviewPrepRequestInput) {
   const resume = await resumeService.getById(input.resumeId, userId);
@@ -13,11 +14,13 @@ export async function generateInterviewPrep(userId: string, input: InterviewPrep
 
   const { rawText } = resumeDocumentToStructure(doc);
   const aiClient = await createAiClientForUser(userId);
+  const disciplineGlossary = resolveDisciplineGlossary({ targetDiscipline: resume.targetDiscipline, targetJobRole: resume.targetJobRole });
 
   const result = await aiClient.generateInterviewPrep({
     resumeText: rawText,
     roleTitle: input.roleTitle,
     jobDescriptionText: input.jobDescriptionText,
+    disciplineGlossary,
   });
 
   return interviewRepository.create(userId, {

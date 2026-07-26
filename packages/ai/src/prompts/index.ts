@@ -6,6 +6,7 @@ import { coverLetterPrompt } from "./cover-letter";
 import { interviewPrepPrompt } from "./interview-prep";
 import { linkedinOptimizationPrompt } from "./linkedin-optimization";
 import { resumeRewritePrompt, bulletRewritePrompt } from "./resume-rewrite";
+import { resumeStructuringPrompt } from "./resume-structuring";
 
 export const DEFAULT_PROMPTS: Record<AiFeature, PromptSpec> = {
   RESUME_ANALYSIS: resumeAnalysisPrompt,
@@ -16,6 +17,7 @@ export const DEFAULT_PROMPTS: Record<AiFeature, PromptSpec> = {
   LINKEDIN_OPTIMIZATION: linkedinOptimizationPrompt,
   RESUME_REWRITE: resumeRewritePrompt,
   BULLET_REWRITE: bulletRewritePrompt,
+  RESUME_STRUCTURING: resumeStructuringPrompt,
 };
 
 export * from "./resume-analysis";
@@ -25,3 +27,4 @@ export * from "./cover-letter";
 export * from "./interview-prep";
 export * from "./linkedin-optimization";
 export * from "./resume-rewrite";
+export * from "./resume-structuring";

@@ -57,4 +57,25 @@ describe("AiClient", () => {
       expect.objectContaining({ feature: "BULLET_REWRITE", success: true, usage: { promptTokens: 10, completionTokens: 20 } })
     );
   });
+
+  it("structures an uploaded resume, defaulting fields the model omits", async () => {
+    const client = new AiClient({
+      provider: stubProvider(
+        JSON.stringify({
+          personalInfo: { fullName: "Ahmed Al Marri", email: "ahmed@example.com", phone: "+971 50 123 4567" },
+          experience: [{ jobTitle: "HVAC Site Engineer", employer: "Acme MEP Contracting LLC", startDate: "2020-01", current: true, bullets: ["Supervised chiller plant installation"] }],
+          detectedDiscipline: "HVAC Engineer",
+          // education/skills/etc. intentionally omitted to exercise defaults
+        })
+      ),
+    });
+
+    const result = await client.structureResume({ resumeText: "raw cv text" });
+    expect(result.personalInfo.fullName).toBe("Ahmed Al Marri");
+    expect(result.experience).toHaveLength(1);
+    expect(result.experience[0].employer).toBe("Acme MEP Contracting LLC");
+    expect(result.education).toEqual([]);
+    expect(result.skills).toEqual([]);
+    expect(result.detectedDiscipline).toBe("HVAC Engineer");
+  });
 });

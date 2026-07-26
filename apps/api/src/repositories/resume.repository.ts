@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma";
-import type { CreateResumeInput } from "@resumeai/shared";
+import type { CreateResumeInput, UpdateResumeMetaInput } from "@resumeai/shared";
 import type { Prisma } from "@resumeai/db";
 
 export const resumeRepository = {
@@ -28,6 +28,7 @@ export const resumeRepository = {
         targetIndustry: input.targetIndustry,
         targetJobLevel: input.targetJobLevel,
         targetJobRole: input.targetJobRole,
+        targetDiscipline: input.targetDiscipline,
         yearsExperience: input.yearsExperience,
       },
     });
@@ -62,7 +63,7 @@ export const resumeRepository = {
     return prisma.resume.update({ where: { id: resumeId }, data: { currentVersionId: versionId } });
   },
 
-  updateMeta(resumeId: string, userId: string, data: Partial<Omit<CreateResumeInput, never>>) {
+  updateMeta(resumeId: string, userId: string, data: UpdateResumeMetaInput) {
     return prisma.resume.updateMany({ where: { id: resumeId, userId }, data });
   },
 

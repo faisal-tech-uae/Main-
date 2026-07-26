@@ -62,6 +62,14 @@ export function useApi() {
       patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body }),
       del: <T>(path: string) => request<T>(path, { method: "DELETE" }),
       postForm: <T>(path: string, formData: FormData) => request<T>(path, { method: "POST", body: formData, isFormData: true }),
+      getBlob: async (path: string): Promise<Blob> => {
+        const token = await getToken();
+        const res = await fetch(`${API_BASE_URL}${path}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (!res.ok) throw new ApiClientError(res.status, "Request failed");
+        return res.blob();
+      },
       downloadFile: async (path: string, filename: string) => {
         const token = await getToken();
         const res = await fetch(`${API_BASE_URL}${path}`, {
