@@ -63,6 +63,25 @@ Responses are validated with Zod (`packages/ai/src/schemas.ts`) before being tru
 call reports token usage/cost/latency through an `onUsage` callback that the API wires to
 `AiUsageLog` for the admin cost dashboard.
 
+## UAE/MEP discipline specialization
+
+`packages/shared/src/constants/mep-disciplines.ts` is the single source of truth for discipline
+glossaries (systems, tools, UAE authorities/certifications). `apps/api/src/lib/discipline.ts`
+resolves a resume's discipline (explicit `targetDiscipline` id, or a fuzzy match against free-text
+`targetJobRole`) into a glossary snippet, which every AI-backed service (`ats-scan`, `cover-letter`,
+`interview`, `linkedin`, `rewrite`) splices into its prompt via the `{{disciplineGlossary}}`
+placeholder. Uploading an old CV goes through one more AI step before it becomes editable:
+`structuring.service.ts` calls the `RESUME_STRUCTURING` AI feature to extract a structured document
+from raw text, then deterministically fills in ids and schema defaults
+(`resumeDocumentSchema.parse`) before saving it as a normal `Resume` — from that point on it's
+indistinguishable from a resume built from scratch.
+
+The "non-ATS" visual export (`services/export/pdf-exporter-visual.ts`) and photo pipeline
+(`services/photo.service.ts`, using `sharp` for real crop/sharpen/normalize processing, not a
+generative re-paint) exist specifically for this audience: UAE recruiters commonly expect a photo
+and a designed CV for direct/email submissions, separate from the ATS-safe version used for
+portal uploads.
+
 ## Auth & authorization
 
 Clerk issues the session JWT; `apps/api/src/middleware/auth.ts` verifies it with

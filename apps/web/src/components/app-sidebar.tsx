@@ -2,33 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  FileText,
-  ScanSearch,
-  LayoutTemplate,
-  Mail,
-  MessageSquareText,
-  Linkedin,
-  Briefcase,
-  Settings,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { Sparkles } from "lucide-react";
+import { NAV_ITEMS } from "@/lib/nav-items";
 import { cn } from "@/lib/utils";
-
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/resumes", label: "Resume Builder", icon: FileText },
-  { href: "/scanner", label: "ATS Scanner", icon: ScanSearch },
-  { href: "/templates", label: "Templates", icon: LayoutTemplate },
-  { href: "/cover-letters", label: "Cover Letters", icon: Mail },
-  { href: "/interview-prep", label: "Interview Prep", icon: MessageSquareText },
-  { href: "/linkedin-optimizer", label: "LinkedIn Optimizer", icon: Linkedin },
-  { href: "/applications", label: "Applications", icon: Briefcase },
-  { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/admin", label: "Admin", icon: ShieldCheck },
-];
 
 export function AppSidebar() {
   const pathname = usePathname();

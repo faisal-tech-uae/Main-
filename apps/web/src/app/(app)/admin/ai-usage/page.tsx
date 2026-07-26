@@ -56,7 +56,7 @@ export default function AdminAiUsagePage() {
         <CardHeader>
           <CardTitle>Recent AI Calls</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">

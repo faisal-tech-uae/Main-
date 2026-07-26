@@ -1,6 +1,6 @@
 # ResumeAI Pro
 
-An AI-powered platform for building ATS-compatible resumes, scanning existing resumes against real ATS parsing behavior, and matching resumes to job descriptions — with a hybrid rule-based + AI scoring engine at its core.
+An AI-powered platform for building ATS-compatible resumes, scanning existing resumes against real ATS parsing behavior, and matching resumes to job descriptions — with a hybrid rule-based + AI scoring engine at its core. Specialized for UAE MEP engineers (Mechanical, Electrical, HVAC, Site Engineer, Facilities Manager/Engineer, and related disciplines): upload an old CV, get it converted into an editable resume, AI-reviewed with correct discipline terminology, and exported as either an ATS-safe or a photo/visual non-ATS PDF. Ships as a responsive, installable PWA (works on Android and iOS via the browser's "Add to Home Screen") — see [`docs/ROADMAP.md`](docs/ROADMAP.md) for why that's a PWA and not an App Store/Play Store app.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the system is put together, [`docs/INSTALLATION.md`](docs/INSTALLATION.md) to run it locally or with Docker, and [`docs/ROADMAP.md`](docs/ROADMAP.md) for an honest picture of what's fully built versus scaffolded for follow-up work.
 
