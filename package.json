@@ -1,0 +1,33 @@
+{
+  "name": "resumeai-pro",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ResumeAI Pro - AI-powered ATS resume builder, scanner, and career platform",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" run dev",
+    "dev:web": "pnpm --filter @resumeai/web run dev",
+    "dev:api": "pnpm --filter @resumeai/api run dev",
+    "build": "pnpm --filter \"./apps/*\" run build",
+    "lint": "pnpm -r run lint",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck",
+    "format": "prettier --write .",
+    "db:generate": "pnpm --filter @resumeai/db run generate",
+    "db:migrate": "pnpm --filter @resumeai/db run migrate",
+    "db:studio": "pnpm --filter @resumeai/db run studio",
+    "db:seed": "pnpm --filter @resumeai/db run seed"
+  },
+  "devDependencies": {
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["sharp", "@prisma/client", "@prisma/engines", "prisma", "esbuild"]
+  }
+}

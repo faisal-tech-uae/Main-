@@ -1,0 +1,348 @@
+import { PrismaClient, TemplateCategory, AiFeature, Prisma } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+const PLAN_CONFIGS = [
+  {
+    plan: "FREE" as const,
+    priceMonthlyCents: 0,
+    priceYearlyCents: 0,
+    scanLimit: 5,
+    features: {
+      resumeBuilder: true,
+      atsScans: 5,
+      coverLetters: false,
+      interviewCoach: false,
+      resumeRewrite: false,
+      linkedinOptimizer: false,
+    },
+  },
+  {
+    plan: "PREMIUM" as const,
+    priceMonthlyCents: 1999,
+    priceYearlyCents: 19999,
+    scanLimit: -1,
+    features: {
+      resumeBuilder: true,
+      atsScans: -1,
+      coverLetters: true,
+      interviewCoach: true,
+      resumeRewrite: true,
+      linkedinOptimizer: true,
+    },
+  },
+  {
+    plan: "ENTERPRISE" as const,
+    priceMonthlyCents: 4999,
+    priceYearlyCents: 49999,
+    scanLimit: -1,
+    features: {
+      resumeBuilder: true,
+      atsScans: -1,
+      coverLetters: true,
+      interviewCoach: true,
+      resumeRewrite: true,
+      linkedinOptimizer: true,
+      teamSeats: true,
+      prioritySupport: true,
+    },
+  },
+];
+
+const TEMPLATES: Array<{
+  slug: string;
+  name: string;
+  category: TemplateCategory;
+  description: string;
+  isPremium: boolean;
+  layoutConfig: Prisma.InputJsonValue;
+}> = [
+  {
+    slug: "classic-ats",
+    name: "Classic ATS",
+    category: "GENERAL",
+    description: "Single-column, no tables/graphics — the safest baseline for every ATS.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#111827", sectionOrder: ["summary", "experience", "education", "skills"] },
+  },
+  {
+    slug: "software-engineer",
+    name: "Software Engineer",
+    category: "SOFTWARE",
+    description: "Optimized for engineering roles with prominent tech-stack and project sections.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#2563EB", sectionOrder: ["summary", "skills", "experience", "projects", "education"] },
+  },
+  {
+    slug: "healthcare-professional",
+    name: "Healthcare Professional",
+    category: "HEALTHCARE",
+    description: "Certification-forward layout for clinical and healthcare roles.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Source Sans Pro", accentColor: "#0F766E", sectionOrder: ["summary", "certifications", "experience", "education", "skills"] },
+  },
+  {
+    slug: "finance-analyst",
+    name: "Finance Analyst",
+    category: "FINANCE",
+    description: "Metrics-first layout that foregrounds quantifiable achievements.",
+    isPremium: true,
+    layoutConfig: { columns: 1, font: "Georgia", accentColor: "#1E3A8A", sectionOrder: ["summary", "experience", "skills", "education", "certifications"] },
+  },
+  {
+    slug: "project-management",
+    name: "Project Management",
+    category: "PROJECT_MANAGEMENT",
+    description: "Highlights methodologies (Agile/Scrum/PMP) and delivery outcomes.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#7C3AED", sectionOrder: ["summary", "certifications", "experience", "skills", "education"] },
+  },
+  {
+    slug: "construction-civil",
+    name: "Construction & Civil",
+    category: "CONSTRUCTION",
+    description: "Field-ready layout for construction, civil, and MEP professionals.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#B45309", sectionOrder: ["summary", "experience", "certifications", "skills", "education"] },
+  },
+  {
+    slug: "hr-people-ops",
+    name: "HR & People Ops",
+    category: "HR",
+    description: "People-first narrative style for HR and talent roles.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#BE185D", sectionOrder: ["summary", "experience", "skills", "education", "certifications"] },
+  },
+  {
+    slug: "executive-leadership",
+    name: "Executive Leadership",
+    category: "EXECUTIVE",
+    description: "Board-ready format for VP/C-suite candidates with a leadership summary.",
+    isPremium: true,
+    layoutConfig: { columns: 1, font: "Georgia", accentColor: "#111827", sectionOrder: ["summary", "experience", "education", "awards", "skills"] },
+  },
+  {
+    slug: "fresher-graduate",
+    name: "Fresher / New Graduate",
+    category: "FRESHER",
+    description: "Education and projects lead the page for candidates with limited work history.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#2563EB", sectionOrder: ["summary", "education", "projects", "skills", "experience"] },
+  },
+  {
+    slug: "academic-cv",
+    name: "Academic / Research CV",
+    category: "ACADEMIC",
+    description: "Supports publications, research, and patents for academic applications.",
+    isPremium: true,
+    layoutConfig: { columns: 1, font: "Georgia", accentColor: "#374151", sectionOrder: ["summary", "education", "publications", "research", "experience", "skills"] },
+  },
+  {
+    slug: "architecture-portfolio",
+    name: "Architecture",
+    category: "ARCHITECTURE",
+    description: "Clean, minimal layout that keeps focus on project descriptions and software proficiency.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#0891B2", sectionOrder: ["summary", "experience", "projects", "education", "skills"] },
+  },
+  {
+    slug: "mechanical-engineer",
+    name: "Mechanical Engineer",
+    category: "MECHANICAL",
+    description: "Emphasizes CAD tools, manufacturing processes, and certifications.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#475569", sectionOrder: ["summary", "experience", "skills", "certifications", "education"] },
+  },
+  {
+    slug: "electrical-engineer",
+    name: "Electrical Engineer",
+    category: "ELECTRICAL",
+    description: "Highlights systems design experience and industry certifications.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#CA8A04", sectionOrder: ["summary", "experience", "skills", "certifications", "education"] },
+  },
+  {
+    slug: "mep-specialist",
+    name: "MEP Specialist",
+    category: "MEP",
+    description: "Built for mechanical/electrical/plumbing coordination roles on large builds.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#0D9488", sectionOrder: ["summary", "experience", "certifications", "skills", "education"] },
+  },
+  {
+    slug: "civil-engineer",
+    name: "Civil Engineer",
+    category: "CIVIL",
+    description: "Structured around infrastructure projects, permits, and compliance experience.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#92400E", sectionOrder: ["summary", "experience", "projects", "certifications", "education"] },
+  },
+  {
+    slug: "marketing-growth",
+    name: "Marketing & Growth",
+    category: "MARKETING",
+    description: "Campaign-and-metrics-first layout for growth, brand, and content marketers.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#DB2777", sectionOrder: ["summary", "experience", "skills", "education", "certifications"] },
+  },
+  {
+    slug: "legal-counsel",
+    name: "Legal / Counsel",
+    category: "LEGAL",
+    description: "Conservative, credential-forward layout for legal professionals.",
+    isPremium: true,
+    layoutConfig: { columns: 1, font: "Georgia", accentColor: "#1F2937", sectionOrder: ["summary", "experience", "education", "certifications", "publications"] },
+  },
+  {
+    slug: "hospitality-service",
+    name: "Hospitality & Service",
+    category: "HOSPITALITY",
+    description: "Guest-experience-focused layout for hotel, restaurant, and travel roles.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#EA580C", sectionOrder: ["summary", "experience", "skills", "languages", "education"] },
+  },
+  {
+    slug: "sales-quota-crusher",
+    name: "Sales",
+    category: "SALES",
+    description: "Quota attainment and revenue-impact-first layout for sales roles.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#DC2626", sectionOrder: ["summary", "experience", "skills", "awards", "education"] },
+  },
+  {
+    slug: "teaching-educator",
+    name: "Teaching & Education",
+    category: "TEACHING",
+    description: "Highlights curriculum design, classroom outcomes, and certifications.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Georgia", accentColor: "#15803D", sectionOrder: ["summary", "certifications", "experience", "education", "skills"] },
+  },
+  {
+    slug: "government-public-sector",
+    name: "Government & Public Sector",
+    category: "GOVERNMENT",
+    description: "Formal, compliance-friendly layout matching public-sector application norms.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Times New Roman", accentColor: "#1E40AF", sectionOrder: ["summary", "experience", "education", "certifications", "skills"] },
+  },
+  {
+    slug: "internship-entry",
+    name: "Internship",
+    category: "INTERNSHIP",
+    description: "Coursework, projects, and skills lead for students seeking internships.",
+    isPremium: false,
+    layoutConfig: { columns: 1, font: "Inter", accentColor: "#2563EB", sectionOrder: ["summary", "education", "projects", "skills", "volunteer"] },
+  },
+];
+
+async function main() {
+  for (const cfg of PLAN_CONFIGS) {
+    await prisma.planConfig.upsert({
+      where: { plan: cfg.plan },
+      update: cfg,
+      create: cfg,
+    });
+  }
+
+  for (const t of TEMPLATES) {
+    await prisma.template.upsert({
+      where: { slug: t.slug },
+      update: t,
+      create: t,
+    });
+  }
+
+  const prompts: Array<{ feature: AiFeature; name: string; systemPrompt: string; userPromptTemplate: string }> = [
+    {
+      feature: "RESUME_ANALYSIS",
+      name: "Executive Resume Analysis",
+      systemPrompt:
+        "You are a senior recruiter and resume strategist with 15 years of experience across industries. Analyze resumes objectively and return structured, actionable JSON only.",
+      userPromptTemplate:
+        "Analyze the following resume for the target role \"{{targetRole}}\" in the \"{{targetIndustry}}\" industry ({{targetCountry}}, job level: {{jobLevel}}).\n\n{{disciplineGlossary}}\n\nResume:\n\n{{resumeText}}\n\nReturn JSON with: executiveSummary, strengths[], weaknesses[], atsProblems[], formattingProblems[], missingKeywords[], actionPlan[], priorityFixes[], estimatedInterviewProbability (0-100), estimatedRecruiterReadability (0-100), estimatedAtsPassProbability (0-100). If a discipline glossary was provided, missingKeywords and priorityFixes should call out relevant missing terminology, systems, tools, or UAE certifications/approvals from it — not generic advice.",
+    },
+    {
+      feature: "ATS_ANALYSIS",
+      name: "ATS Compatibility Analysis",
+      systemPrompt:
+        "You are an ATS parsing simulator familiar with Greenhouse, Lever, Workday, Oracle Taleo, SAP SuccessFactors, iCIMS, SmartRecruiters, JazzHR, BambooHR, UKG, and Dayforce. Explain how each system would parse this document and where it would lose information.",
+      userPromptTemplate:
+        "Given this parsed resume structure:\n\n{{parsedStructure}}\n\nSimulate parsing behavior for platform \"{{platform}}\" and list specific fields at risk of misparse, with point deductions and reasons.",
+    },
+    {
+      feature: "KEYWORD_ANALYSIS",
+      name: "Job Description Keyword Matching",
+      systemPrompt:
+        "You extract and compare hard skills, soft skills, tools, certifications, and seniority signals between a resume and a job description.",
+      userPromptTemplate:
+        "{{disciplineGlossary}}\n\nResume:\n{{resumeText}}\n\nJob Description:\n{{jobDescriptionText}}\n\nReturn JSON: matchedKeywords[], missingKeywords[], missingSkills[], experienceGap, educationGap, softSkillsGap[], technicalSkillsGap[], priorityRecommendations[], keywordMatchPercent. Use precise discipline terminology from the glossary above where relevant instead of generic phrasing.",
+    },
+    {
+      feature: "COVER_LETTER",
+      name: "ATS-Friendly Cover Letter",
+      systemPrompt:
+        "You write concise, specific, ATS-friendly cover letters that reference real resume achievements and avoid generic filler.",
+      userPromptTemplate:
+        "Write a cover letter for {{roleTitle}} at {{company}} using this resume:\n{{resumeText}}\n\nJob description:\n{{jobDescriptionText}}\n\n{{disciplineGlossary}}\n\nTone: {{tone}}. Keep it under 350 words, 3-4 paragraphs.",
+    },
+    {
+      feature: "INTERVIEW_PREP",
+      name: "Interview Question Generator",
+      systemPrompt:
+        "You generate realistic interview questions tailored to a candidate's resume and target role, with STAR-method model answers grounded in the candidate's real experience.",
+      userPromptTemplate:
+        "Resume:\n{{resumeText}}\n\nTarget role: {{roleTitle}}\n\n{{disciplineGlossary}}\n\nGenerate 5 technical, 5 behavioral, and 3 HR questions. If a discipline glossary was provided, technical questions should probe its specific systems/standards/tools. For each, include a suggested STAR-format answer using only facts present in the resume.",
+    },
+    {
+      feature: "LINKEDIN_OPTIMIZATION",
+      name: "LinkedIn Profile Optimizer",
+      systemPrompt:
+        "You optimize LinkedIn profiles for recruiter search visibility while keeping an authentic, human voice.",
+      userPromptTemplate:
+        "Based on this resume:\n{{resumeText}}\n\n{{disciplineGlossary}}\n\nGenerate a LinkedIn headline (under 220 chars), an About section (under 2000 chars), 3 Featured suggestions, and a prioritized skills list with search keywords. Prioritize discipline-specific systems/tools/certifications where a glossary was provided.",
+    },
+    {
+      feature: "RESUME_REWRITE",
+      name: "Full Resume Rewrite",
+      systemPrompt:
+        "You rewrite resumes to maximize clarity, impact, and ATS compatibility while preserving every fact: employers, dates, titles, and years of experience must never be altered or invented.",
+      userPromptTemplate:
+        "Rewrite the following resume content for maximum impact and ATS compatibility. Do not invent facts, change employers, dates, or titles. Use strong action verbs and quantify achievements only where numbers are already present or can be reasonably inferred from context.\n\n{{disciplineGlossary}}\n\n{{resumeText}}",
+    },
+    {
+      feature: "BULLET_REWRITE",
+      name: "Bullet Point Rewriter",
+      systemPrompt:
+        "You convert task-oriented resume bullets into accomplishment-oriented, quantified, ATS-friendly bullets using the STAR method and strong action verbs.",
+      userPromptTemplate:
+        "Rewrite this bullet point for a {{roleTitle}} resume. Keep it factually identical, one line, starting with a strong action verb:\n\n{{bulletText}}\n\n{{disciplineGlossary}}",
+    },
+    {
+      feature: "RESUME_STRUCTURING",
+      name: "CV Upload → Structured Resume",
+      systemPrompt:
+        "You convert unstructured resume/CV text (extracted from a PDF or DOCX upload) into a clean structured JSON representation. Extract only what is actually present in the text — never invent employers, dates, titles, schools, or skills.",
+      userPromptTemplate:
+        "Raw extracted resume text:\n{{resumeText}}\n\n{{disciplineGlossary}}\n\nReturn a JSON object with keys: personalInfo, summary, experience[], projects[], education[], certifications[], skills[], languages[], awards[], volunteer[], detectedDiscipline. Dates normalized to \"YYYY-MM\" where known. Split responsibilities into separate one-line bullets.",
+    },
+  ];
+
+  for (const p of prompts) {
+    await prisma.promptTemplate.upsert({
+      where: { feature: p.feature },
+      update: { name: p.name, systemPrompt: p.systemPrompt, userPromptTemplate: p.userPromptTemplate },
+      create: p,
+    });
+  }
+
+  console.log(`Seeded ${PLAN_CONFIGS.length} plans, ${TEMPLATES.length} templates, ${prompts.length} prompts.`);
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
